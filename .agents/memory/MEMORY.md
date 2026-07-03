@@ -1,0 +1,2 @@
+- [Multi-artifact frontend/backend API calls](multi-artifact-api-routing.md) — frontend must call relative `/api/...`, never hardcode a port or setBaseUrl; shared proxy routes by path.
+- [Restoring a project from a zip backup](restore-from-zip-backup.md) — checklist of steps and easy-to-miss folders when reviving a full-stack app from an old backup zip.
