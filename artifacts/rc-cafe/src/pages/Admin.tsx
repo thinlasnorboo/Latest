@@ -128,6 +128,40 @@ function BookingForm({ initial, onSave, onCancel }: {
   );
 }
 
+// ─── Image compression helper ─────────────────────────────────────────────────
+const MAX_IMAGE_DIMENSION = 1600;
+const COMPRESSED_QUALITY = 0.8;
+
+async function compressImage(file: File): Promise<File> {
+  if (!file.type.startsWith("image/") || file.type === "image/svg+xml") return file;
+
+  const bitmap = await createImageBitmap(file).catch(() => null);
+  if (!bitmap) return file;
+
+  let { width, height } = bitmap;
+  if (width > MAX_IMAGE_DIMENSION || height > MAX_IMAGE_DIMENSION) {
+    const scale = MAX_IMAGE_DIMENSION / Math.max(width, height);
+    width = Math.round(width * scale);
+    height = Math.round(height * scale);
+  }
+
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return file;
+  ctx.drawImage(bitmap, 0, 0, width, height);
+
+  const outputType = file.type === "image/png" ? "image/png" : "image/jpeg";
+  const blob: Blob | null = await new Promise(resolve =>
+    canvas.toBlob(resolve, outputType, COMPRESSED_QUALITY)
+  );
+  if (!blob || blob.size >= file.size) return file;
+
+  const newName = file.name.replace(/\.\w+$/, outputType === "image/png" ? ".png" : ".jpg");
+  return new File([blob], newName, { type: outputType });
+}
+
 // ─── Admin Image Upload ────────────────────────────────────────────────────────
 function AdminImageUpload({ currentUrl, onUploaded }: { currentUrl: string; onUploaded: (url: string) => void }) {
   const [uploading, setUploading] = useState(false);
@@ -135,11 +169,12 @@ function AdminImageUpload({ currentUrl, onUploaded }: { currentUrl: string; onUp
   const inputRef = useRef<HTMLInputElement>(null);
 
   async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const rawFile = e.target.files?.[0];
+    if (!rawFile) return;
     setError("");
     setUploading(true);
     try {
+      const file = await compressImage(rawFile);
       const token = localStorage.getItem("rc_admin_token") ?? "";
       // Step 1: get presigned URL
       const res = await fetch("/api/storage/uploads/request-url", {
