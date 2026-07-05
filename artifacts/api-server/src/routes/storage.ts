@@ -40,7 +40,8 @@ router.post('/storage/uploads/request-url', requireAdmin, async (req: Request, r
  * Unconditionally public — serves assets from PUBLIC_OBJECT_SEARCH_PATHS.
  */
 router.get('/storage/public-objects/*path', async (req: Request, res: Response) => {
-  const filePath = (req.params as Record<string, string>).path;
+  const rawPath = (req.params as Record<string, unknown>).path;
+  const filePath = Array.isArray(rawPath) ? rawPath.join('/') : String(rawPath ?? '');
   try {
     const file = await objectStorageService.searchPublicObject(filePath);
     if (!file) {
@@ -63,7 +64,9 @@ router.get('/storage/public-objects/*path', async (req: Request, res: Response) 
  * Serves uploaded objects — admin only for now.
  */
 router.get('/storage/objects/*path', async (req: Request, res: Response) => {
-  const objectPath = '/objects/' + (req.params as Record<string, string>).path;
+  const rawPath = (req.params as Record<string, unknown>).path;
+  const segment = Array.isArray(rawPath) ? rawPath.join('/') : String(rawPath ?? '');
+  const objectPath = '/objects/' + segment;
   try {
     const file = await objectStorageService.getObjectEntityFile(objectPath);
     const response = await objectStorageService.downloadObject(file);
